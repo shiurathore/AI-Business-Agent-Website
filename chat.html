@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Chat Bot — AI Mail Automation</title>
+
+<style>
+
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background-color: black;
+    color: #e7e7e7;
+}
+.image-gradient{
+    position: absolute;
+    top: 0;
+    right: 0;
+    opacity: 0.5;
+    z-index: -1;
+}
+.app{
+  max-width:900px;
+  margin:40px auto;
+  padding:20px;
+}
+
+.chat-panel{
+  background:rgba(255,255,255,0.08);
+  border-radius:14px;
+  padding:16px;
+  height:790px;
+  display:flex;
+  flex-direction:column;
+  backdrop-filter:blur(8px);
+  box-shadow:0 8px 30px rgba(0,0,0,0.35);
+}
+
+.chat-topbar{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+
+.system-tip{
+  font-size:13px;
+  opacity:.8;
+}
+
+.status{
+  font-size:13px;
+  color:#cfe0ff;
+}
+
+.chat-messages{
+  flex:1;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding-right:6px;
+}
+
+.message{
+  max-width:75%;
+  padding:12px;
+  border-radius:12px;
+  line-height:1.4;
+}
+
+.message.user{
+  align-self:flex-end;
+  background:#3b82f6;
+}
+
+.message.ai{
+  align-self:flex-start;
+  background:rgba(255,255,255,0.12);
+}
+
+.chat-input{
+  background:rgba(255,255,255,0.06);
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.12);
+  margin-top:10px;
+}
+
+textarea{
+  width:100%;
+  min-height:50px;
+  max-height:200px;
+  resize:none;
+  border:none;
+  outline:none;
+  background:transparent;
+  color:white;
+  padding:12px;
+  font-size:14px;
+}
+
+.toolbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:8px 10px;
+  border-top:1px solid rgba(255,255,255,0.08);
+}
+
+button{
+  border:none;
+  background:#3b82f6;
+  color:white;
+  padding:7px 16px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+button:hover{
+  background:#2563eb;
+}
+
+.attach-list{
+  display:none;
+  padding:5px 10px;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+.attach-pill{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  background:rgba(255,255,255,0.1);
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:6px;
+  padding:3px 8px;
+  font-size:12px;
+}
+
+.chat-messages::-webkit-scrollbar{
+  width:8px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb{
+  background:rgba(255,255,255,0.08);
+  border-radius:8px;
+}
+
+</style>
+</head>
+
+<body>
+<img class="image-gradient" src="gradient.png" alt="gradient">
+<div class="app">
+
+<div class="chat-panel">
+
+<div class="chat-topbar">
+<div class="system-tip">AI Chat — Ask about emails, scheduling, replies</div>
+<div class="status" id="status">Idle</div>
+</div>
+
+<div class="chat-messages" id="messages">
+<div class="message ai">
+Hello! I'm your AI assistant. Ask me to draft emails, summarize threads, or create replies.
+</div>
+</div>
+
+<div class="chat-input">
+
+<textarea id="chatInput" placeholder="Write a message to the AI..."></textarea>
+
+<div class="attach-list" id="attachList"></div>
+
+<div class="toolbar">
+
+<div>
+<label style="cursor:pointer">
+📎
+<input type="file" id="fileInput" multiple style="display:none;">
+</label>
+</div>
+
+<div style="display:flex;align-items:center;gap:10px;">
+<button id="sendBtn">Send</button>
+</div>
+
+</div>
+
+</div>
+
+</div>
+</div>
+
+<script>
+
+const sendBtn=document.getElementById("sendBtn");
+const chatInput=document.getElementById("chatInput");
+const messages=document.getElementById("messages");
+const status=document.getElementById("status");
+const fileInput=document.getElementById("fileInput");
+const attachList=document.getElementById("attachList");
+
+function addMessage(text,sender){
+const msg=document.createElement("div");
+msg.classList.add("message",sender);
+msg.textContent=text;
+messages.appendChild(msg);
+messages.scrollTop=messages.scrollHeight;
+
+}
+
+async function sendMessage(){
+const userText=chatInput.value.trim();
+if(!userText)return;
+addMessage(userText,"user");
+chatInput.value="";
+chatInput.style.height="auto";
+status.textContent="Thinking...";
+
+try{
+const response=await fetch("http://localhost:3000/api/ai",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+message:userText
+})
+});
+
+const data=await response.json();
+addMessage(data.reply || "No response","ai");
+}
+catch(err){
+addMessage("⚠️ Error connecting to AI server","ai");
+}
+status.textContent="Idle"
+}
+
+sendBtn.addEventListener("click",sendMessage);
+chatInput.addEventListener("keydown",(e)=>{
+if(e.key==="Enter" && !e.shiftKey){
+e.preventDefault();
+sendMessage();
+}
+
+});
+
+/* Auto Expand Textarea */
+
+chatInput.addEventListener("input",()=>{
+chatInput.style.height="auto";
+chatInput.style.height=chatInput.scrollHeight+"px";
+});
+
+/* File Attachments */
+
+fileInput.addEventListener("change",(e)=>{
+attachList.innerHTML="";
+attachList.style.display="flex";
+Array.from(e.target.files).forEach(file=>{
+const pill=document.createElement("div");
+pill.className="attach-pill";
+pill.innerHTML=(file.type.startsWith("image")?"🖼 ":"📎 ")+file.name+
+' <span style="cursor:pointer;margin-left:4px;" onclick="this.parentElement.remove()">✕</span>';
+attachList.appendChild(pill);
+});
+});
+
+</script>
+
+</body>
+</html>
